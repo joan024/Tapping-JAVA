@@ -12,7 +12,7 @@ public class PSP {
 		String server = "files.000webhost.com";
         int port = 21;
         String user = "tapping";
-        String password = "Tapping@2023";
+        String password = "Tapping2023";
 
         // Archivo a subir
         File file = new File("C:/prova/prueba.xml");
@@ -27,7 +27,7 @@ public class PSP {
         ftpClient.enterLocalPassiveMode();
 
         // Subida del archivo
-        String remoteFile = file.getName();
+        String remoteFile = "public_html/"+file.getName();
         FileInputStream inputStream = new FileInputStream(file);
         boolean success = ftpClient.storeFile(remoteFile, inputStream);
         inputStream.close();
@@ -38,9 +38,9 @@ public class PSP {
 
         // Mensaje de resultado
         if (success) {
-            System.out.println("Archivo subido correctamente");
+            System.out.println("Arxiu pujat amb exit.");
         } else {
-            System.out.println("No se ha podido subir el archivo");
+            System.out.println("No s'ha pogut pujar l'arxiu.");
         }
 
 	}
