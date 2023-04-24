@@ -15,7 +15,7 @@ public class PSP {
         String password = "Tapping2023";
 
         // Archivo a subir
-        File file = new File("C:/prova/Noticia2.xml");
+        File file = new File("C:/prova/3.txt");
 
         // Cliente FTP
         FTPClient ftpClient = new FTPClient();
@@ -27,9 +27,10 @@ public class PSP {
         ftpClient.enterLocalPassiveMode();
 
         String remoteFile = file.getName();
-        String rutaLocal = "/public_html/Locals";
+        String rutaGeneral = "/public_html/fotos/";
+        String rutaLocal = rutaGeneral+"Locals";
         File carpetaLocal = new File(rutaLocal);
-        String rutaNoticia = "/public_html/Noticies";
+        String rutaNoticia = rutaGeneral+"Noticies";
         File carpetaNoticia = new File(rutaNoticia);
         
         // Subida del archivo
@@ -45,6 +46,8 @@ public class PSP {
         	}
         	rutaNoticia += "/";
         	remoteFile = rutaNoticia+file.getName();
+        }else {
+        	remoteFile = rutaGeneral+file.getName();
         }
         
         FileInputStream inputStream = new FileInputStream(file);
@@ -62,4 +65,6 @@ public class PSP {
             System.out.println("No s'ha pogut pujar l'arxiu.");
         }
 	}
+	
+	
 }
