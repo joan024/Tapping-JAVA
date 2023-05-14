@@ -15,7 +15,6 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Date;
-import java.util.Scanner;
 import javax.swing.JOptionPane;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -38,25 +37,29 @@ public class AppJava {
 	static int port = 21;
 	static String user = "tapping";
 	static String password = "Tapping2023";
-	static String rutaRemota1 = "/public_html/fotos/Locals/";
-	static String rutaLocales = "C:/TappingFotos/local/";
-	static String rutaFotos = "C:/TappingFotos/";
-	static Scanner sc = new Scanner(System.in);
-	static String id;
-	static ArrayList<String> Borrarfotos;
+	static String rutaRemotaLocals = "/public_html/fotos/Locals/";
+	static String rutaLocalLocals = "C:/TappingFotos/local/";
+	static String rutaLocalFotos = "C:/TappingFotos/";
+	static String idLocal;
+	static ArrayList<String> fotosABorrar = new ArrayList<String>();
 	
 	public static void main(String[] args) throws SocketException, IOException, TransformerException {
 
+		// Sol·licita la ruta del fitxer amb una finestra emergent
 		String ruta = JOptionPane.showInputDialog("Indica la ruta del fitxer");
 		
-		comprobarXml(ruta);
+		// Comprova si el fitxer XML existeix i realitza les accions pertinents
+		comprovarSiXMLExisteix(ruta);
 		
+		// Mostra un missatge per indicar que el programa ha finalitzat
+		JOptionPane.showMessageDialog(null, "El progrma ha finalitzat.");;
 		
 	}
 
-	
-	public static void comprobarXml(String ruta) throws TransformerException {
+	// Mètode que comprova si el fitxer XML existeix al servidor FTP i, en funció del resultat, realitza diferents accions
+	public static void comprovarSiXMLExisteix(String ruta) throws TransformerException {
 		
+		// Es crea un nou client FTP i es realitza la connexió al servidor
 		 FTPClient ftpClient = new FTPClient();
 		    try {
 		        ftpClient.connect(server, port);
@@ -64,64 +67,77 @@ public class AppJava {
 		        ftpClient.enterLocalPassiveMode();
 		        ftpClient.setFileType(FTP.BINARY_FILE_TYPE);
 
-		        id = idTxt(ruta);
-		        String[] files = ftpClient.listNames(rutaRemota1 + id + ".xml");
-		        if (files != null && files.length > 0) {
-		            // El archivo existe, descargarlo
-		        	String remoteFile = rutaRemota1 + id + ".xml";
-		        	File localFile = new File(rutaLocales + id + ".xml");
-		        	OutputStream outputStream = new BufferedOutputStream(new FileOutputStream(localFile));
-		        	InputStream inputStream = ftpClient.retrieveFileStream(remoteFile);
-		        	byte[] bytesArray = new byte[4096];
-		        	int bytesRead = -1;
-		        	while ((bytesRead = inputStream.read(bytesArray)) != -1) {
-		        	    outputStream.write(bytesArray, 0, bytesRead);
-		        	}
-		        	boolean success = ftpClient.completePendingCommand();
-		        	if (success) {
-		        	    System.out.println("Se ha baixat Correctament");
-		        	} else {
-		        	    System.out.println("No se ha pogut baixa.");
-		        	}
-		        	outputStream.close();
-		        	inputStream.close();
-
-		        	String dataTxt = fechaTxt(ruta);
-		        	String dataXml = fechaXml(ruta);
-		        	comprobarData(dataTxt,dataXml,ruta);
-		 
-		        }else {
-		        	String archivo =TxtAXml(ruta);
-		        	pujarArxiu(archivo);
-		        	String fotos [] = fotos(ruta);
-		        	SubirFotos(fotos);
+				// Es recupera l'identificador del local a partir del fitxer TXT
+		        idLocal = agafarIdTxt(ruta);
+		        
+				// S'obté la ruta del fitxer XML al servidor i es crea un File object per al fitxer XML local
+		        String arxiuRemot = rutaRemotaLocals + idLocal + ".xml";
+		        File arxiuLocal = new File(rutaLocalLocals + idLocal + ".xml");
+		        
+				// Es comprova si el fitxer XML existeix al servidor FTP
+		        if (ftpClient.retrieveFile(arxiuRemot, new FileOutputStream(arxiuLocal))) {
 		        	
+					// Si el fitxer XML existeix al servidor, es recupera la data del fitxer TXT i del fitxer XML
+		            String dataTxt = agafarDataTxt(ruta);
+		            String dataXml = llegirXml(ruta);
+		            
+					// Es comparen les dates del fitxer TXT i del fitxer XML per decidir quina acció s'ha de realitzar
+		            compararDates(dataTxt, dataXml, ruta);
+		        } else {
+					// Si el fitxer XML no existeix al servidor, es converteix el fitxer TXT a XML i es pugen el fitxer XML i les fotos al servidor
+		            String arxiuXml = TxtAXml(ruta);
+		            pujarArxiuXml(arxiuXml);
+		            String[] fotos = fotos(ruta);
+		            pujarFotos(fotos);
 		        }
+		        
+				// Es tanca la connexió amb el servidor FTP
 	            ftpClient.logout();
 	            ftpClient.disconnect();
-	        } catch (IOException e) {
-	            e.printStackTrace();
-	        }
+		    } catch (IOException e) {
+		        System.err.println("Error de E/S al conectar o desconectar del servidor FTP: " + e.getMessage());
+		        e.printStackTrace();
+		    } finally {
+		        try {
+		            if (ftpClient.isConnected()) {
+		                ftpClient.disconnect();
+		            }
+		        } catch (IOException e) {
+		            System.err.println("Error al cerrar la conexión FTP: " + e.getMessage());
+		            e.printStackTrace();
+		        }
+		    }
 	
 	}
 	
-	public static void comprobarData(String dataTxt, String dataXml, String ruta) throws SocketException, IOException {
+	// Aquesta funció compara dues dates i si són diferents executa diferents accions
+	public static void compararDates(String dataTxt, String dataXml, String ruta) throws SocketException, IOException {
 		
+		// Es crea un objecte de DateFormat amb el format de data especificat
 		DateFormat dateFormat = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss");
 
         try {
-            Date date1 = dateFormat.parse(dataTxt);
-            Date date2 = dateFormat.parse(dataXml);
+        	// Es converteixen les dates String a objectes Date
+            Date dataParsejadaTxt = dateFormat.parse(dataTxt);
+            Date dataParsejadaXml = dateFormat.parse(dataXml);
 
-            if (!date1.equals(date2)) {
-            	String fotos [] = fotos(ruta);
-            	borrarFotos(Borrarfotos);
+            // Si les dates són diferents, es realitzen les següents accions
+            if (!dataParsejadaTxt.equals(dataParsejadaXml)) {
+            	
+            	// Es crea un array de Strings amb els noms de les fotos a afegir
+            	String fotosPerAfegir [] = fotos(ruta);
+            	
+            	// Esborrar les fotos que ja no es necessiten llegides anteriorment
+            	borrarFotos(fotosABorrar);
+            	// S'extreu el nom del fitxer XML a partir de la ruta i es crea el fitxer XML
             	String nom =TxtAXml(ruta);
-    			pujarArxiu(nom);
-    			SubirFotos(fotos);
+    			pujarArxiuXml(nom);
+    			// S'envien les fotos que es volen afegir
+    			pujarFotos(fotosPerAfegir);
     			
             }else {
-            	System.out.println("Les Dates son les Mateixes");
+            	// Si les dates són iguals, s'informa a l'usuari
+            	JOptionPane.showMessageDialog(null, "La data del arxiu no ha cambiat, no s'han actualitzat les fotos");
             }
         } catch (ParseException e) {
             e.printStackTrace();
@@ -129,33 +145,35 @@ public class AppJava {
 		
 	}
 
-	public static String fechaXml(String ruta) {
+	//Mètode que llegeix un arxiu XML i n'extreu la data i els noms de les fotos contingudes.
+	public static String llegirXml(String ruta) {
 		
-		 String archivo = rutaLocales+id+".xml"; 
-		 String fecha = "";
+		 String arxiu = rutaLocalLocals+idLocal+".xml"; 
+		 String data = "";
 	        try {
-	            // Crear el objeto DocumentBuilderFactory
+	            // Crear l'objecte DocumentBuilderFactory
 	            DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
 	            DocumentBuilder builder = factory.newDocumentBuilder();
-	            // Parsear el archivo XML
-	            Document document = builder.parse(new File(archivo));
-	            // Obtener el elemento raíz
+	            // Parsejar l'arxiu XML
+	            Document document = builder.parse(new File(arxiu));
+	            // Obtindre l'element arrel
 	            Element rootElement = document.getDocumentElement();
-	            // Obtener el nodo de fecha
-	            NodeList fechaNodes = rootElement.getElementsByTagName("data");
-	            if (fechaNodes.getLength() > 0) {
-	                // Obtener el primer nodo de fecha
-	                Node fechaElement =  fechaNodes.item(0);
-	                // Obtener el texto del nodo de fecha
-	                	fecha = fechaElement.getTextContent();
-	                // Aquí tienes la fecha obtenida del archivo XML
-	                System.out.println(fecha);
+	            // Obtindre el node de la data
+	            NodeList dataNodes = rootElement.getElementsByTagName("data");
+	            if (dataNodes.getLength() > 0) {
+	                // Obtindre el primer node de la data
+	                Node dataElement =  dataNodes.item(0);
+	                // Obtindre el text del node de la data
+	                data = dataElement.getTextContent();
+
 	            } else {
-	                System.out.println("No se encontró ninguna etiqueta de fecha en el archivo XML.");
+	            	JOptionPane.showMessageDialog(null, "El format del xml es incorrecte, torna generar-lo");
 	            }
+	            // Obtindre el node de les fotos
 	            NodeList llistaFotos = rootElement.getElementsByTagName("foto");
 	            for (int i = 0; i < llistaFotos.getLength(); i++) {
 	                Node fotoNode = llistaFotos.item(i);
+		            // Obtindre el node de dins de les fotos
 	                if (fotoNode.getNodeType() == Node.ELEMENT_NODE) {
 	                    Element photoElement = (Element) fotoNode;
 	                    // Obtindre l'element <nom> de cada element <foto>
@@ -163,63 +181,68 @@ public class AppJava {
 	                    if (llistaNoms.getLength() > 0) {
 	                        Node nomNode = llistaNoms.item(0);
 	                        String nom = nomNode.getTextContent();
-	                        Borrarfotos.add(nom);
+	                        fotosABorrar.add(nom);
 	                    }
 	                }
 	            }
 	        } catch (Exception e) {
 	            e.printStackTrace();
 	        }
-	        return fecha;
+	        return data;
 	}
 	
+	//Aquest mètode converteix el contingut d'un fitxer .txt en un fitxer .xml
 	public static String TxtAXml (String ruta) {
 
-		String contenido,nom="";
-        int cont = 0;
-
+		String contingut,nom="";
         try {
-		BufferedReader br = new BufferedReader(new FileReader(rutaLocales+id+".txt"));
-        ArrayList<String> lineas = new ArrayList<String>();
-
-        while ((contenido = br.readLine()) != null) {
-            String[] contenidoSplit = contenido.split("#");
-            for (String s : contenidoSplit) {
-                lineas.add(s);
-            }
-        }
-        String fecha = lineas.get(0);
-        nom = lineas.get(1);
-        br.close();
-
-        DocumentBuilderFactory docFactory = DocumentBuilderFactory.newInstance();
-        DocumentBuilder docBuilder = docFactory.newDocumentBuilder();
-        Document doc = docBuilder.newDocument();
-
-        Element rootElement = doc.createElement("fotos");
-        doc.appendChild(rootElement);
-
-        Element data = doc.createElement("data");
-        data.appendChild(doc.createTextNode(fecha));
-        rootElement.appendChild(data);
-
-        for (int i = 2; i < lineas.size(); i++) {
-        	Element foto = doc.createElement("foto");
-            rootElement.appendChild(foto);
-            
-            Element lineElement = doc.createElement("nom");
-            lineElement.appendChild(doc.createTextNode(lineas.get(i)));
-            foto.appendChild(lineElement);
-            cont++;
-        }
-        TransformerFactory transformerFactory = TransformerFactory.newInstance();
-        Transformer transformer = transformerFactory.newTransformer();
-        DOMSource source = new DOMSource(doc);
-        String xmlPath = rutaLocales+nom+".xml"; // Ruta donde se guardará el archivo XML
-        StreamResult result = new StreamResult(new File(xmlPath));
-        transformer.transform(source, result);
-
-        System.out.println("Archivo XML creado con éxito en la ruta: " + xmlPath);  
+        	// Llegim el contingut del fitxer .txt
+			BufferedReader br = new BufferedReader(new FileReader(rutaLocalLocals+idLocal+".txt"));
+	        ArrayList<String> linies = new ArrayList<String>();
+	
+	        // Separem el contingut en diferents línies
+	        while ((contingut = br.readLine()) != null) {
+	            String[] contingutSplit = contingut.split("#");
+	            for (String s : contingutSplit) {
+	                linies.add(s);
+	            }
+	        }
+	        // Obtenim la data del fitxer
+	        String dataTxt = linies.get(0);
+	        // Obtenim el nom del fitxer .xml a crear
+	        nom = linies.get(1);
+	        br.close();
+	
+	        // Creem el fitxer .xml i li afegim la informació obtinguda
+	        DocumentBuilderFactory docFactory = DocumentBuilderFactory.newInstance();
+	        DocumentBuilder docBuilder = docFactory.newDocumentBuilder();
+	        Document doc = docBuilder.newDocument();
+	
+	        Element rootElement = doc.createElement("fotos");
+	        doc.appendChild(rootElement);
+	
+	        Element data = doc.createElement("data");
+	        data.appendChild(doc.createTextNode(dataTxt));
+	        rootElement.appendChild(data);
+	
+	        for (int i = 2; i < linies.size(); i++) {
+	        	Element foto = doc.createElement("foto");
+	            rootElement.appendChild(foto);
+	            
+	            Element lineElement = doc.createElement("nom");
+	            lineElement.appendChild(doc.createTextNode(linies.get(i)));
+	            foto.appendChild(lineElement);
+	        }
+	        
+	        // Guardem el fitxer .xml
+	        TransformerFactory transformerFactory = TransformerFactory.newInstance();
+	        Transformer transformer = transformerFactory.newTransformer();
+	        DOMSource source = new DOMSource(doc);
+	        String xmlPath = rutaLocalLocals+nom+".xml"; // Ruta on es guardarà el fitxer .xml
+	        StreamResult result = new StreamResult(new File(xmlPath));
+	        transformer.transform(source, result);
+	
+	        System.out.println("Archivo XML creado con éxito en la ruta: " + xmlPath);  
 
         	} catch (IOException | ParserConfigurationException | TransformerException e) {
         		e.printStackTrace();
@@ -227,98 +250,103 @@ public class AppJava {
         return nom;
 	}
 	
-	public static void pujarArxiu(String ruta) throws SocketException, IOException {
+	// Funció per pujar un arxiu XML a un servidor FTP
+	public static void pujarArxiuXml(String ruta) throws SocketException, IOException {
 		
-		String archivo = TxtAXml(ruta);
+		// Obtenim l'arxiu XML local a partir de la ruta especificada com a paràmetre
+		File file = new File(rutaLocalLocals+idLocal+".xml");
 
-		File file = new File(rutaLocales+id+".xml");
-
-        // Cliente FTP
+		// Creem una instància de FTPClient per connectar-nos al servidor FTP
         FTPClient ftpClient = new FTPClient();
         ftpClient.connect(server, port);
         ftpClient.login(user, password);
 
-        // Configuración de la transferencia de archivos
+        // Configurem la transferència d'arxius com a arxius binaris i mode passiu
         ftpClient.setFileType(FTP.BINARY_FILE_TYPE);
         ftpClient.enterLocalPassiveMode();
 
+        // Especificem el nom remot de l'arxiu i creem una instància de FileInputStream per llegir l'arxiu local
         String remoteFile = file.getName();
-        File carpetaLocal = new File(rutaRemota1+id+".xml");
-
-        remoteFile = rutaRemota1+file.getName();
+        remoteFile = rutaRemotaLocals+file.getName();
         FileInputStream inputStream = new FileInputStream(file);
+        
+        // Pujem l'arxiu al servidor FTP i tanquem l'InputStream
         boolean success = ftpClient.storeFile(remoteFile, inputStream);
         inputStream.close();
 
-        // Cierre de la conexión FTP
+        // Tanquem la connexió FTP
         ftpClient.logout();
         ftpClient.disconnect();
 
-        // Mensaje de resultado
+        // Mostrem un missatge de resultat depenent del resultat de la transferència
         if (success) {
-            System.out.println("Arxiu pujat amb exit.");
+            JOptionPane.showMessageDialog(null, "S'han actualitzat les imatges amb exit");
         } else {
-            System.out.println("No s'ha pogut pujar l'arxiu.");
+        	JOptionPane.showMessageDialog(null, "No s'han pogut actualitzar les imatges");
         }
 	}
 
-	public static String fechaTxt(String ruta) {
-		String arxiu = rutaLocales + ruta; 
-	    String fecha = "";
+	// Aquest mètode agafa la data d'un fitxer de text a partir de la seva ruta
+	public static String agafarDataTxt(String ruta) {
+		// ruta completa del fitxer a llegir
+		String arxiu = rutaLocalLocals + ruta; 
+		// variable on s'emmagatzemarà la data llegida
+	    String data = "";
+	    
+	    // s'inicia la lectura del fitxer amb un try-with-resources
 	    try (BufferedReader br = new BufferedReader(new FileReader(arxiu))) {
-	        String fechaHoraStr = br.readLine();
-	        String fechaStr = fechaHoraStr.split("#")[0];
-	        LocalDateTime fechaParsed = parsearFechaHora(fechaStr, "dd/MM/yyyy HH:mm:ss");
-	        DateTimeFormatter formatear = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
-	        fecha = fechaParsed.format(formatear);
-	        System.out.println(fecha);
-	        String nombreArchivo;
-	        while ((nombreArchivo = br.readLine()) != null) {
-	            System.out.println("Nombre de Archivo: " + nombreArchivo);
-	        }
+	    	
+	    	// es llegeix la primera línia del fitxer, que conté data i hora juntes i id separats per #
+	        String dataHoraStr = br.readLine();
+	        String dataStr = dataHoraStr.split("#")[0]; // es separen data i hora de l'id
+	        
+	        // es crea un formateador de data/hora per obtenir la data en un format concret
+	        DateTimeFormatter formatejar = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
+	        // es formata la data llegida amb el formateador creat
+	        data = dataStr.formatted(formatejar);
 	    } catch (IOException e) {
 	        e.printStackTrace();
 	    }
-	    return fecha;
-	}
-	
-	private static LocalDateTime parsearFechaHora(String fechaHoraStr, String formato) {
-	    DateTimeFormatter formatter = DateTimeFormatter.ofPattern(formato);
-	    return LocalDateTime.parse(fechaHoraStr, formatter);
+	    return data;
 	}
 
-	public static String idTxt(String ruta) {
+	/* Aquesta funció rep com a paràmetre una ruta, on es troba un fitxer de text,
+	de la qual extreu l'identificador, que es troba en la primera línia del fitxer,
+	separant-la pel caràcter # i obtenint la segona part.*/
+	public static String agafarIdTxt(String ruta) {
 		String id ="";
-		String filePath = rutaLocales + ruta; 
+		String filePath = rutaLocalLocals + ruta; 
 	    try (BufferedReader br = new BufferedReader(new FileReader(filePath))) {
 	        String idtxt = br.readLine();
 	        id = idtxt.split("#")[1];
 	    } catch (IOException e) {
 	        e.printStackTrace();
+	        JOptionPane.showMessageDialog(null, "No s'ha trobat l'arxiu indicat");
 	    }
 		return id;
 	}
 	
-	public static void borrarFotos(ArrayList<String> nombresArchivos) {
+	//Funció que es connecta al servidor FTP i elimina els arxius amb els noms continguts en un ArrayList de Strings.
+	public static void borrarFotos(ArrayList<String> nomsArxius) {
 		
+		// Es connecta al servidor FTP
 		 FTPClient ftpClient = new FTPClient();
 		    try {
 		        ftpClient.connect(server, port);
 		        ftpClient.login(user, password);
 
-		        for (String nombreArchivo : nombresArchivos) {
-		            String rutaArchivo = rutaRemota1 + "/" + nombreArchivo;
-		            boolean resultado = ftpClient.deleteFile(rutaArchivo);
-		            if (resultado) {
-		                System.out.println("El archivo " + rutaArchivo + " ha sido borrado exitosamente.");
-		            } else {
-		                System.out.println("No se pudo borrar el archivo " + rutaArchivo + ".");
-		            }
+		    	// Recorre tots els noms d'arxius de l'ArrayList
+		        for (String nomArxiu : nomsArxius) {
+		            String rutaArxiu = rutaRemotaLocals + "/" + nomArxiu;
+		            //Elimina els arxius indicats
+		            ftpClient.deleteFile(rutaArxiu);
 		        }
 		    } catch (IOException e) {
 		        System.out.println("Ocurrió un error al conectarse al servidor FTP: " + e.getMessage());
 		    } finally {
 		        try {
+		    		// Es desconnecta del servidor FTP
+		        	ftpClient.logout();
 		            ftpClient.disconnect();
 		        } catch (IOException e) {
 		            System.out.println("Ocurrió un error al desconectarse del servidor FTP: " + e.getMessage());
@@ -326,26 +354,35 @@ public class AppJava {
 		    }
 	}
 
-	public static void SubirFotos(String[] fotos) {
+	// Funció per pujar fotos a un servidor FTP
+	public static void pujarFotos(String[] fotos) {
+		// Creem un client FTP
 		FTPClient ftpClient = new FTPClient();
 	    try {
+	    	// Ens connectem al servidor FTP
 	        ftpClient.connect(server, port);
 	        ftpClient.login(user, password);
 	        ftpClient.enterLocalPassiveMode();
-	        ftpClient.changeWorkingDirectory(rutaRemota1);
+	        ftpClient.changeWorkingDirectory(rutaRemotaLocals);
 	        ftpClient.setFileType(FTPClient.BINARY_FILE_TYPE);
 
-	        for (String rutaArchivo : fotos) {
-	            File archivo = new File(rutaFotos + rutaArchivo);
-	            String nombreArchivo = archivo.getName();
-	            String rutaArchivoRemota = rutaRemota1 + "/" + nombreArchivo;
-	            FileInputStream inputStream = new FileInputStream(archivo);
-	            boolean resultado = ftpClient.storeFile(rutaArchivoRemota, inputStream);
+	    	// Pujem cada foto de la llista
+	        for (String rutaArxiu : fotos) {
+	        	// Obtenim el fitxer de la ruta local
+	            File arxiu = new File(rutaLocalFotos + rutaArxiu);
+	    		String nomArxiu = arxiu.getName(); // Obtenim el nom del fitxer
+	    		
+	    		// Generem la ruta remota del fitxer
+	            String rutaArxiuRemot = rutaRemotaLocals + "/" + nomArxiu;
+	            // Creem un stream d'entrada del fitxer
+	            FileInputStream inputStream = new FileInputStream(arxiu);
+	            // Pugem el fitxer al servidor
+	            boolean resultat = ftpClient.storeFile(rutaArxiuRemot, inputStream);
 	            inputStream.close();
-	            if (resultado) {
-	                System.out.println("El archivo " + nombreArchivo + " ha sido subido exitosamente.");
+	            if (resultat) {
+	                System.out.println("El archivo " + nomArxiu + " ha sido subido exitosamente.");
 	            } else {
-	                System.out.println("No se pudo subir el archivo " + nombreArchivo + ".");
+	                System.out.println("No se pudo subir el archivo " + nomArxiu + ".");
 	            }
 	        }
 	        ftpClient.logout();
@@ -360,22 +397,34 @@ public class AppJava {
 	    }
 	}
 
+	//Aquesta funció retorna un array de Strings que conté el nom de les fotos que es troben a la ruta especificada com a paràmetre.
 	public static String [] fotos(String ruta) {
 		
+	    // Inicialitzem la llista on guardarem els noms de les fotos
 		 String[] fotos = null;
-		    ArrayList<String> listaFotos = new ArrayList<String>();
-		    File archivo = new File(rutaLocales + ruta);
+		 ArrayList<String> listaFotos = new ArrayList<String>();
+		 // Creem un objecte File amb la ruta especificada
+		 File arxiu = new File(rutaLocalLocals + ruta);
 		    
 		    try {
-		        FileReader fr = new FileReader(archivo);
+		        // Obrim un FileReader amb l'arxiu
+		        FileReader fr = new FileReader(arxiu);
+		        // Creem un BufferedReader per a llegir el FileReader
 		        BufferedReader br = new BufferedReader(fr);
 		        String linea;
+		        
+		        // Anem llegint cada línia de l'arxiu
 		        while ((linea = br.readLine()) != null) {
+		            // Si la línia acaba amb .jpg, .jpeg o .png l'afegim a la llista de fotos
 		            if (linea.endsWith(".jpg") || linea.endsWith(".jpeg") || linea.endsWith(".png")) {
 		                listaFotos.add(linea);
 		            }
 		        }
+		        
+		        // Tanquem el FileReader i el BufferedReader
 		        fr.close();
+		        br.close();
+		        // Convertim la llista de fotos a un array de Strings
 		        fotos = listaFotos.toArray(new String[0]);
 		    } catch (IOException e) {
 		        e.printStackTrace();
