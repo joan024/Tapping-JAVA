@@ -42,6 +42,7 @@ public class AppJava {
 	static String rutaLocales = "C:/TappingFotos/local/";
 	static String rutaFotos = "C:/TappingFotos/";
 	static Scanner sc = new Scanner(System.in);
+	static String id;
 	
 	public static void main(String[] args) throws SocketException, IOException, TransformerException {
 
@@ -62,7 +63,7 @@ public class AppJava {
 		        ftpClient.enterLocalPassiveMode();
 		        ftpClient.setFileType(FTP.BINARY_FILE_TYPE);
 
-		        String id = idTxt(ruta);
+		        id = idTxt(ruta);
 		        String[] files = ftpClient.listNames(rutaRemota1 + id + ".xml");
 		        if (files != null && files.length > 0) {
 		            // El archivo existe, descargarlo
@@ -127,7 +128,6 @@ public class AppJava {
 
 	public static String fechaXml(String ruta) {
 		
-		 String id = idTxt(ruta);
 		 String archivo = rutaLocales+id+".xml"; 
 		 String fecha = "";
 	        try {
@@ -162,7 +162,7 @@ public class AppJava {
         int cont = 0;
 
         try {
-		BufferedReader br = new BufferedReader(new FileReader(rutaLocales+ruta+""));
+		BufferedReader br = new BufferedReader(new FileReader(rutaLocales+id+".txt"));
         ArrayList<String> lineas = new ArrayList<String>();
 
         while ((contenido = br.readLine()) != null) {
@@ -213,7 +213,7 @@ public class AppJava {
 	public static void pujarArxiu(String ruta) throws SocketException, IOException {
 		
 		String archivo = TxtAXml(ruta);
-		String id = idTxt(archivo);
+
 		File file = new File(rutaLocales+id+".xml");
 
         // Cliente FTP
@@ -227,9 +227,7 @@ public class AppJava {
 
         String remoteFile = file.getName();
         File carpetaLocal = new File(rutaRemota1+id+".xml");
-        if(!carpetaLocal.exists()) {
-        	ftpClient.makeDirectory(rutaRemota1+id+".xml");
-        }
+
         remoteFile = rutaRemota1+file.getName();
         FileInputStream inputStream = new FileInputStream(file);
         boolean success = ftpClient.storeFile(remoteFile, inputStream);
