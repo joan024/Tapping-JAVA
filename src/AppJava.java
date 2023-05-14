@@ -43,6 +43,7 @@ public class AppJava {
 	static String rutaFotos = "C:/TappingFotos/";
 	static Scanner sc = new Scanner(System.in);
 	static String id;
+	static ArrayList<String> Borrarfotos;
 	
 	public static void main(String[] args) throws SocketException, IOException, TransformerException {
 
@@ -92,7 +93,9 @@ public class AppJava {
 		        }else {
 		        	String archivo =TxtAXml(ruta);
 		        	pujarArxiu(archivo);
-		            System.out.println("Se ha subido Correctamente");
+		        	String fotos [] = fotos(ruta);
+		        	SubirFotos(fotos);
+		        	
 		        }
 	            ftpClient.logout();
 	            ftpClient.disconnect();
@@ -112,7 +115,7 @@ public class AppJava {
 
             if (!date1.equals(date2)) {
             	String fotos [] = fotos(ruta);
-            	borrarFotos(fotos);
+            	borrarFotos(Borrarfotos);
             	String nom =TxtAXml(ruta);
     			pujarArxiu(nom);
     			SubirFotos(fotos);
@@ -149,6 +152,20 @@ public class AppJava {
 	                System.out.println(fecha);
 	            } else {
 	                System.out.println("No se encontró ninguna etiqueta de fecha en el archivo XML.");
+	            }
+	            NodeList llistaFotos = rootElement.getElementsByTagName("foto");
+	            for (int i = 0; i < llistaFotos.getLength(); i++) {
+	                Node fotoNode = llistaFotos.item(i);
+	                if (fotoNode.getNodeType() == Node.ELEMENT_NODE) {
+	                    Element photoElement = (Element) fotoNode;
+	                    // Obtindre l'element <nom> de cada element <foto>
+	                    NodeList llistaNoms = photoElement.getElementsByTagName("nom");
+	                    if (llistaNoms.getLength() > 0) {
+	                        Node nomNode = llistaNoms.item(0);
+	                        String nom = nomNode.getTextContent();
+	                        Borrarfotos.add(nom);
+	                    }
+	                }
 	            }
 	        } catch (Exception e) {
 	            e.printStackTrace();
@@ -282,7 +299,7 @@ public class AppJava {
 		return id;
 	}
 	
-	public static void borrarFotos(String[] nombresArchivos) {
+	public static void borrarFotos(ArrayList<String> nombresArchivos) {
 		
 		 FTPClient ftpClient = new FTPClient();
 		    try {
