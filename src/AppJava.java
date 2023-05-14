@@ -29,6 +29,7 @@ import org.apache.commons.net.ftp.FTP;
 import org.apache.commons.net.ftp.FTPClient;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
+import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
 public class AppJava {
@@ -108,7 +109,7 @@ public class AppJava {
             Date date1 = dateFormat.parse(dataTxt);
             Date date2 = dateFormat.parse(dataXml);
 
-            if (date1.compareTo(date2) > 0 && date2.compareTo(date1) >0) {
+            if (!date1.equals(date2)) {
             	String fotos [] = fotos(ruta);
             	borrarFotos(fotos);
             	String nom =TxtAXml(ruta);
@@ -141,7 +142,7 @@ public class AppJava {
 	            NodeList fechaNodes = rootElement.getElementsByTagName("data");
 	            if (fechaNodes.getLength() > 0) {
 	                // Obtener el primer nodo de fecha
-	                Element fechaElement = (Element) fechaNodes.item(0);
+	                Node fechaElement =  fechaNodes.item(0);
 	                // Obtener el texto del nodo de fecha
 	                	fecha = fechaElement.getTextContent();
 	                // Aquí tienes la fecha obtenida del archivo XML
@@ -161,7 +162,7 @@ public class AppJava {
         int cont = 0;
 
         try {
-		BufferedReader br = new BufferedReader(new FileReader(rutaLocales+ruta));
+		BufferedReader br = new BufferedReader(new FileReader(rutaLocales+ruta+""));
         ArrayList<String> lineas = new ArrayList<String>();
 
         while ((contenido = br.readLine()) != null) {
@@ -253,8 +254,9 @@ public class AppJava {
 	        String fechaHoraStr = br.readLine();
 	        String fechaStr = fechaHoraStr.split("#")[0];
 	        LocalDateTime fechaParsed = parsearFechaHora(fechaStr, "dd/MM/yyyy HH:mm:ss");
-	        System.out.println(fechaParsed);
-	        fecha = fechaParsed.toString();
+	        DateTimeFormatter formatear = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
+	        fecha = fechaParsed.format(formatear);
+	        System.out.println(fecha);
 	        String nombreArchivo;
 	        while ((nombreArchivo = br.readLine()) != null) {
 	            System.out.println("Nombre de Archivo: " + nombreArchivo);

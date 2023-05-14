@@ -15,7 +15,7 @@ public class PSP {
         String password = "Tapping2023";
 
         // Archivo a subir
-        File file = new File("C:/prova/3.txt");
+        File file = new File("C:/prova/3.xml");
 
         // Cliente FTP
         FTPClient ftpClient = new FTPClient();
@@ -30,17 +30,17 @@ public class PSP {
         String rutaGeneral = "/public_html/fotos/";
         String rutaLocal = rutaGeneral+"Locals";
         File carpetaLocal = new File(rutaLocal);
-        String rutaNoticia = rutaGeneral+"Noticies";
-        File carpetaNoticia = new File(rutaNoticia);
+       /* String rutaNoticia = rutaGeneral+"Noticies";
+        File carpetaNoticia = new File(rutaNoticia);*/
         
         // Subida del archivo
-        if(remoteFile.contains("Local")) {
-        	if(!carpetaLocal.exists()) {
-        		ftpClient.makeDirectory(rutaLocal);
-        	}
-        	rutaLocal += "/";
-        	remoteFile = rutaLocal+file.getName();
-        }else if(remoteFile.contains("Noticia")){
+        /*if(remoteFile.contains("Local")) {*/
+        if(!carpetaLocal.exists()) {
+        	ftpClient.makeDirectory(rutaLocal);
+        }
+        rutaLocal += "/";
+        remoteFile = rutaLocal+file.getName();
+        /*}else if(remoteFile.contains("Noticia")){
         	if(!carpetaNoticia.exists()) {
         		ftpClient.makeDirectory(rutaNoticia);
         	}
@@ -48,7 +48,7 @@ public class PSP {
         	remoteFile = rutaNoticia+file.getName();
         }else {
         	remoteFile = rutaGeneral+file.getName();
-        }
+        }*/
         
         FileInputStream inputStream = new FileInputStream(file);
         boolean success = ftpClient.storeFile(remoteFile, inputStream);
@@ -65,6 +65,5 @@ public class PSP {
             System.out.println("No s'ha pogut pujar l'arxiu.");
         }
 	}
-	
 	
 }
